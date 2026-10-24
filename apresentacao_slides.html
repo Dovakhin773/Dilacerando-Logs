@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dilacerando Logs, Cuspindo Entropia — YARA Math + Wazuh</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --background: #0b0f17;
+      --card: #111827;
+      --foreground: #f3f4f6;
+      --muted-foreground: #9ca3af;
+      --border: #1f2937;
+    }
+    body {
+      background-color: var(--background);
+      color: var(--foreground);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-4 md:p-6 select-none min-h-screen">
+
+  <div class="max-w-6xl mx-auto flex flex-col gap-4">
+    <!-- Top Header / Controls -->
+    <header class="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          Aula 60 Min
+        </span>
+        <div>
+          <h1 class="text-sm md:text-base font-bold text-[var(--foreground)]">Dilacerando Logs, Cuspindo Entropia</h1>
+          <p class="text-xs text-[var(--muted-foreground)]">YARA <code class="font-mono">math.entropy</code> + Wazuh Active Response (Matemática de 1948 vs. Marketing de US$ 1 Milhão)</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btn-notes" onclick="toggleNotes()" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] hover:opacity-80 transition">
+          Notas do Instrutor: ON
+        </button>
+        <div class="flex items-center gap-1 bg-[var(--background)] border border-[var(--border)] rounded-lg p-1">
+          <button onclick="prevSlide()" class="px-2.5 py-1 rounded text-xs font-semibold hover:bg-[var(--card)] transition" title="Slide Anterior (Seta Esquerda)">
+            ← Ant
+          </button>
+          <span id="slide-counter" class="px-3 text-xs font-mono font-semibold text-[var(--muted-foreground)]">
+            01 / 16
+          </span>
+          <button onclick="nextSlide()" class="px-2.5 py-1 rounded text-xs font-semibold hover:bg-[var(--card)] transition" title="Próximo Slide (Seta Direita)">
+            Próx →
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Progress Bar -->
+    <div class="w-full bg-[var(--card)] h-1.5 rounded-full overflow-hidden border border-[var(--border)]">
+      <div id="progress-bar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 6.25%"></div>
+    </div>
+
+    <!-- Main Slide Stage -->
+    <main id="slide-stage" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 md:p-10 shadow-sm select-text min-h-[500px] flex flex-col justify-between">
+      <!-- Slide Dynamic Content Injected by JS -->
+    </main>
+
+    <!-- Speaker Notes Box -->
+    <aside id="speaker-notes" class="bg-[var(--card)] border border-amber-500/30 rounded-xl p-4 shadow-sm select-text">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Roteiro do Professor / Stand-up de SOC</span>
+        <span id="slide-timer-badge" class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300"></span>
+      </div>
+      <p id="notes-content" class="text-sm text-[var(--muted-foreground)] leading-relaxed"></p>
+    </aside>
+
+    <!-- Slide Quick Jump Dots -->
+    <footer class="flex flex-wrap items-center justify-center gap-1.5 py-1" id="slide-dots"></footer>
+  </div>
+
+  <script>
+    const slides = [
+      {
+        badge: "Bloco 1 • Abertura",
+        time: "Minuto 00–04",
+        title: "Dilacerando Logs, Cuspindo Entropia",
+        subtitle: "Como usar um artigo matemático de 1948 + YARA + Wazuh para fazer o que o seu vendor de EDR jura que só a 'IA Quântica' dele faz (por US$ 500 mil/ano)",
+        notes: "Abra a aula sorrindo e perguntando: 'Quem aqui já participou de uma reunião comercial de EDR ou SIEM onde o vendedor falou que para detectar DNS Tunneling, DGA e Malware Zero-Day empacotado você precisava comprar o add-on AI-Hyper-Quantum-Analytics? Spoiler: por baixo do capô desse módulo milionário mora uma equação de 1 linha escrita em 1948 por Claude Shannon. E hoje nós vamos implementá-la de graça.'",
+        html: `
+          <div class="grid md:grid-cols-2 gap-6 items-center my-3">
+            <div class="space-y-4">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                Matemática de 1948 &gt; Marketing de 1 Milhão de Dólares
+              </div>
+              <p class="text-sm md:text-base text-[var(--muted-foreground)] leading-relaxed">
+                O atacante troca o hash em 1 segundo, troca o IP em 1 minuto e ofusca as strings do payload em 5 minutos. Mas quando ele tenta <strong class="text-[var(--foreground)]">esconder</strong> algo, ele esbarra numa parede física intransponível: <strong class="text-emerald-400">a Entropia de Shannon</strong>.
+              </p>
+              <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 leading-relaxed">
+                <strong>A grande ironia do mercado:</strong> Vendors bilionários rebatizaram o <code class="font-mono">log₂(p)</code> de <em>"Next-Gen Behavioral AI"</em> e trancaram atrás de uma licença Enterprise Plus. Hoje vamos destrancar isso na unha!
+              </div>
+              <div class="grid grid-cols-2 gap-3 pt-1">
+                <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]">
+                  <div class="text-xs text-[var(--muted-foreground)]">Motor Matemático</div>
+                  <div class="text-sm font-bold text-emerald-400 font-mono mt-0.5">YARA import "math"</div>
+                </div>
+                <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]">
+                  <div class="text-xs text-[var(--muted-foreground)]">Orquestração & Resposta</div>
+                  <div class="text-sm font-bold text-sky-400 font-mono mt-0.5">Wazuh Active Response</div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-5 font-mono text-xs space-y-2.5">
+              <div class="text-emerald-400 font-bold">// Mapa de Guerra (60 Minutos)</div>
+              <div class="flex justify-between py-1.5 border-b border-[var(--border)]">
+                <span>00-18m • Pirâmide da Dor & O Blefe dos Vendors vs. Shannon</span>
+                <span class="text-emerald-400">Slides 1-6</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-[var(--border)]">
+                <span>18-32m • Módulo math do YARA (PE, Scripts e Logs)</span>
+                <span class="text-emerald-400">Slides 7-10</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-[var(--border)]">
+                <span>32-45m • Wazuh FIM + Active Response + Tuning FP</span>
+                <span class="text-emerald-400">Slides 11-13</span>
+              </div>
+              <div class="flex justify-between py-1.5">
+                <span>45-60m • Showtime: Dilacerando Logs ao Vivo</span>
+                <span class="text-amber-400">Slides 14-16</span>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 1 • A Pirâmide da Dor",
+        time: "Minuto 04–08",
+        title: "A Pirâmide da Dor (David Bianco) vs. A Pirâmide da Fatura",
+        subtitle: "Por que caçar Hashes faz cócegas no atacante, mas caçar TTPs com Matemática faz ele chorar",
+        notes: "Aponte para a pirâmide visual no slide! Explique que na base (Hashes e IPs), a dor pro atacante é ZERO: ele recompila ou adiciona 1 espaço no código e muda o SHA256 inteiro. Já no topo (TTPs: ofuscação, packing, DGA, exfiltração DNS), o atacante é OBRIGADO a gerar alta entropia. Passe o mouse ou mostre cada camada da pirâmide!",
+        html: `
+          <div class="grid md:grid-cols-12 gap-6 items-center my-2">
+            <!-- SVG / HTML Visual Pyramid of Pain -->
+            <div class="md:col-span-7 flex flex-col items-center space-y-1.5 select-none">
+              <div class="text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] mb-1">
+                ▲ A Pirâmide da Dor (David Bianco, 2013) ▲
+              </div>
+
+              <!-- Level 6: TTPs -->
+              <div class="w-4/12 py-2.5 px-3 rounded-t-xl bg-red-500/25 border-2 border-red-500 text-center shadow-sm">
+                <div class="text-xs font-extrabold text-red-400 uppercase">TTPs (Topo)</div>
+                <div class="text-xs text-[var(--foreground)] font-mono">Packing, DGA, C2 Tunneling → <span class="underline font-bold">ENTROPIA!</span></div>
+              </div>
+
+              <!-- Level 5: Tools -->
+              <div class="w-6/12 py-2 px-3 bg-orange-500/20 border border-orange-500/60 text-center">
+                <div class="text-xs font-bold text-orange-400">Ferramentas (Tools)</div>
+                <div class="text-xs text-[var(--muted-foreground)]">Assinaturas YARA de binários / Crypters</div>
+              </div>
+
+              <!-- Level 4: Host/Network Artifacts -->
+              <div class="w-8/12 py-2 px-3 bg-amber-500/20 border border-amber-500/50 text-center">
+                <div class="text-xs font-bold text-amber-300">Artefatos de Rede / Host</div>
+                <div class="text-xs text-[var(--muted-foreground)]">Paths em <code class="font-mono">/tmp/k9x8...exe</code>, Subdomínios estranhos</div>
+              </div>
+
+              <!-- Level 3: Domain Names -->
+              <div class="w-9/12 py-2 px-3 bg-yellow-500/15 border border-yellow-500/40 text-center">
+                <div class="text-xs font-bold text-yellow-200">Nomes de Domínio (Simples)</div>
+                <div class="text-xs text-[var(--muted-foreground)]">Fácil trocar (5 min registrando domínio novo ou DGA)</div>
+              </div>
+
+              <!-- Level 2: IP Addresses -->
+              <div class="w-10/12 py-2 px-3 bg-sky-500/15 border border-sky-500/40 text-center">
+                <div class="text-xs font-bold text-sky-300">Endereços IP</div>
+                <div class="text-xs text-[var(--muted-foreground)]">Fácil: Proxy, Cloudflare, VPS de US$ 3</div>
+              </div>
+
+              <!-- Level 1: Hash Values -->
+              <div class="w-full py-2 px-3 rounded-b-xl bg-emerald-500/15 border border-emerald-500/40 text-center">
+                <div class="text-xs font-bold text-emerald-300">Valores de Hash (MD5 / SHA256) — Base</div>
+                <div class="text-xs text-[var(--muted-foreground)]">Trivial: Muda 1 bit no arquivo e o seu feed de Threat Intel já era</div>
+              </div>
+            </div>
+
+            <!-- Right Column: The Ironic Reality -->
+            <div class="md:col-span-5 space-y-3">
+              <div class="p-4 rounded-xl bg-[var(--background)] border border-red-500/30">
+                <div class="text-xs font-bold uppercase text-red-400 mb-1">A Piada do "Feed de Milhões de Hashes"</div>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Bloquear hash SHA256 em 2026 é igual anotar a placa de um carro de fuga que troca de placa a cada semáforo. O atacante roda um script Python, adiciona 1 byte nulo no final do binário e pronto: <em>"Malware 100% Indetectável"</em>.
+                </p>
+              </div>
+              <div class="p-4 rounded-xl bg-[var(--background)] border border-emerald-500/30">
+                <div class="text-xs font-bold uppercase text-emerald-400 mb-1">Como Subir para o Topo de Graça?</div>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Para fugir das camadas de baixo (mudar hash, esconder strings com XOR/AES, girar domínios com DGA), o atacante é <strong>forçado a usar aleatoriedade e criptografia</strong>. E é aí que a matemática pega ele pelo pescoço!
+                </p>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 1 • O Dicionário do Vendedor",
+        time: "Minuto 08–11",
+        title: "Tradutor Simultâneo: Faria Lima Cyber Vendor vs. Matemática Real",
+        subtitle: "O que está escrito no folder colorido de US$ 1 Milhão vs. o que realmente roda no código",
+        notes: "Leia linha por linha dessa tabela fazendo voz de comercial de TV para a coluna da esquerda e voz de engenheiro cansado para a coluna da direita. A turma sempre racha de rir porque todo mundo já ouviu exatamente essas buzzwords!",
+        html: `
+          <div class="space-y-4 my-2">
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs border-collapse bg-[var(--background)] rounded-xl overflow-hidden border border-[var(--border)]">
+                <thead>
+                  <tr class="border-b border-[var(--border)] bg-[var(--card)]">
+                    <th class="text-left p-3 text-amber-400">No Slide do Vendedor (US$ 350k/ano)</th>
+                    <th class="text-left p-3 text-emerald-400">O Que Realmente Roda no Código (R$ 0,00)</th>
+                    <th class="text-left p-3 text-sky-400">Tempo p/ Implementar Hoje</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border)]">
+                  <tr>
+                    <td class="p-3 font-semibold">"AI-Driven Zero-Day Packed Malware Heuristics™"</td>
+                    <td class="p-3 font-mono text-[var(--muted-foreground)]">uint16(0) == 0x5A4D and math.entropy(0, filesize) &gt; 7.2</td>
+                    <td class="p-3 font-mono text-emerald-400">3 minutos</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-semibold">"Cognitive DNS Exfiltration &amp; DGA Neural Engine™"</td>
+                    <td class="p-3 font-mono text-[var(--muted-foreground)]">Tamanho da string &gt; 26 e Entropia do subdomínio &gt; 4.3</td>
+                    <td class="p-3 font-mono text-emerald-400">5 minutos</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-semibold">"Quantum Fileless Script De-Obfuscation Shield™"</td>
+                    <td class="p-3 font-mono text-[var(--muted-foreground)]">Script .ps1 com bloco Base64 e Entropia &gt; 5.3</td>
+                    <td class="p-3 font-mono text-emerald-400">4 minutos</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-semibold">"Autonomous Ransomware Encryption Canary™"</td>
+                    <td class="p-3 font-mono text-[var(--muted-foreground)]">FIM detecta arquivo novo sem Magic Byte de ZIP/PNG com Entropia &gt; 7.5</td>
+                    <td class="p-3 font-mono text-emerald-400">5 minutos</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-center">
+              <strong>Moral da história:</strong> Você não precisa de 1 milhão de dólares quando você tem um cara chamado <strong>Claude Shannon</strong> no seu time desde 1948.
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 1 • Quem foi Claude Shannon?",
+        time: "Minuto 11–14",
+        title: "1948: O Pai da Teoria da Informação (e o Pesadelo dos Hackers)",
+        subtitle: "Como um matemático andando de monociclo no Bell Labs estragou a vida dos criadores de malware 80 anos antes",
+        notes: "Conte essa curiosidade histórica rápida: Claude Shannon trabalhava no Bell Labs (andando de monociclo pelos corredores enquanto fazia malabarismo!) e em 1948 publicou 'A Mathematical Theory of Communication'. Ele não só inventou o termo 'bit', como criou uma forma matemática de medir a 'surpresa' ou 'desordem' de qualquer mensagem.",
+        html: `
+          <div class="grid md:grid-cols-2 gap-6 items-center my-2">
+            <div class="space-y-3">
+              <div class="p-4 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+                <div class="text-xs font-mono text-emerald-400 font-bold">Bell Labs, 1948 • "A Mathematical Theory of Communication"</div>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Claude Shannon queria responder uma pergunta simples: <strong>"Quanta informação real (ou surpresa) existe dentro de uma sequência de símbolos?"</strong>
+                </p>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  Se eu te mandar um arquivo de 1 Megabyte cheio apenas da letra <code class="font-mono text-sky-400">A</code> (<code class="font-mono">AAAAAAA...</code>), qual é a sua surpresa ao ler o próximo byte? <strong>Zero!</strong> Você já sabe que o próximo byte será <code class="font-mono">A</code>. Logo, a <strong>Entropia é 0.00</strong>.
+                </p>
+              </div>
+              <div class="p-4 rounded-xl bg-[var(--background)] border border-amber-500/30 space-y-1.5">
+                <div class="text-xs font-bold text-amber-400 uppercase">A Analogia do "Gato no Teclado" vs. Jornal</div>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  • <strong>Texto Humano (<code class="font-mono">financeiro.empresa.com.br</code>):</strong> Segue regras da língua! Depois da letra <code class="font-mono">Q</code> quase sempre vem <code class="font-mono">U</code>. As vogais <code class="font-mono">A, E, I, O, U</code> aparecem toda hora. Há repetição e padrão → <strong>Entropia Baixa/Média (~3.5)</strong>.<br/>
+                  • <strong>Gato sapateando no teclado ou Criptografia (<code class="font-mono">x9k2m7q8z1v4...</code>):</strong> Qualquer caractere tem a mesma chance de aparecer. Imprevisibilidade máxima → <strong>Entropia Explode!</strong>
+                </p>
+              </div>
+            </div>
+
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+              <div class="text-center border-b border-[var(--border)] pb-3">
+                <div class="text-xs text-[var(--muted-foreground)] mb-1">A Equação que Vale 1 Milhão de Dólares:</div>
+                <div class="font-mono text-lg md:text-xl font-extrabold text-emerald-400 py-1">
+                  H(X) = - ∑ P(xᵢ) · log₂ P(xᵢ)
+                </div>
+                <div class="text-xs text-[var(--muted-foreground)]">Resultado medido em <strong>bits de entropia por byte</strong> (de <code class="font-mono">0.0</code> até <code class="font-mono">8.0</code>)</div>
+              </div>
+
+              <div class="space-y-2 text-xs">
+                <div class="font-bold text-[var(--foreground)]">Por que o máximo é 8.0?</div>
+                <p class="text-[var(--muted-foreground)] leading-relaxed">
+                  Porque <strong>1 byte = 8 bits</strong> (<code class="font-mono">2⁸ = 256</code> valores possíveis, de <code class="font-mono">0x00</code> a <code class="font-mono">0xFF</code>).
+                </p>
+                <div class="grid grid-cols-2 gap-2 pt-1 font-mono">
+                  <div class="p-2.5 rounded bg-[var(--card)] border border-[var(--border)]">
+                    <div class="text-sky-400 font-bold">Moeda Viciada</div>
+                    <div class="text-[var(--muted-foreground)]">100% Cara = 0 bits de surpresa</div>
+                  </div>
+                  <div class="p-2.5 rounded bg-[var(--card)] border border-[var(--border)]">
+                    <div class="text-red-400 font-bold">AES-256 / Crypter</div>
+                    <div class="text-[var(--muted-foreground)]">Todos os 256 bytes iguais = 7.99 bits!</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 1 • O Paradoxo do Hacker",
+        time: "Minuto 14–16",
+        title: "O Paradoxo da Furtividade: Esconder = Gritar na Matemática!",
+        subtitle: "Teste interativo ao vivo: Veja a diferença entre um humano, um DGA e um payload criptografado",
+        notes: "Use a calculadora interativa abaixo! Peça para um aluno falar um domínio normal da cabeça dele, digite ali e mostre que dá ~3.5. Depois clique nos botões de DGA e DNS Tunneling para mostrar como o YARA pega na hora!",
+        html: `
+          <div class="grid md:grid-cols-2 gap-6 items-start">
+            <div class="space-y-3">
+              <div class="p-3.5 rounded-xl bg-[var(--background)] border border-red-500/30">
+                <div class="text-xs font-bold uppercase text-red-400 mb-1">A Sinuca de Bico do Atacante:</div>
+                <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                  • Se o atacante deixar <code class="font-mono"> Mimikatz.exe </code> ou <code class="font-mono"> Invoke-Empire </code> em texto claro: <strong>O YARA tradicional pega pela string!</strong><br/>
+                  • Se ele empacotar com UPX/Themida, cifrar com AES ou codificar em Base64: <strong>O YARA Math pega pela entropia!</strong>
+                </p>
+              </div>
+              <table class="w-full text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+                    <th class="text-left py-1.5">Escala do Caos (0 a 8 bits/byte)</th>
+                    <th class="text-right py-1.5">Entropia</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border)] font-mono">
+                  <tr><td class="py-1.5">AAAAAAAAAAAAAAAAAAAA (Ordem Pura)</td><td class="text-right text-sky-400">0.00</td></tr>
+                  <tr><td class="py-1.5">Domínio humano (portal.empresa.com.br)</td><td class="text-right text-emerald-400">3.20 – 3.90</td></tr>
+                  <tr><td class="py-1.5">Domínio DGA / DNS Tunneling</td><td class="text-right text-amber-400 font-bold">4.30 – 5.20+</td></tr>
+                  <tr><td class="py-1.5">PowerShell Base64 / Ofuscado</td><td class="text-right text-amber-400 font-bold">5.30 – 6.00</td></tr>
+                  <tr><td class="py-1.5">Binário Packed / Payload Cifrado</td><td class="text-right text-red-400 font-bold">7.20 – 7.99</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Interactive Live Entropy Calculator -->
+            <div class="p-4 rounded-xl bg-[var(--background)] border border-emerald-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Calculadora de Shannon Ao Vivo</span>
+                <span id="calc-badge" class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Normal</span>
+              </div>
+              <input id="entropy-input" type="text" oninput="updateLiveEntropy()" value="portal.financeiro.empresa.com.br"
+                class="w-full px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] font-mono text-xs text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                placeholder="Digite qualquer string, domínio ou comando..." />
+              <div class="flex flex-wrap gap-1.5">
+                <button onclick="setEntropySample('AAAAAAAAAAAAAAAAAAAAAAAAAAAA')" class="px-2 py-1 rounded text-xs bg-[var(--card)] border border-[var(--border)] hover:border-sky-500">Zero Caos (AAA)</button>
+                <button onclick="setEntropySample('portal.financeiro.empresa.com.br')" class="px-2 py-1 rounded text-xs bg-[var(--card)] border border-[var(--border)] hover:border-emerald-500">Domínio Humano</button>
+                <button onclick="setEntropySample('x9k2m7q8z1v4b6n3p0w5r2t8y1u4i7o0.evilc2.top')" class="px-2 py-1 rounded text-xs bg-[var(--card)] border border-[var(--border)] hover:border-amber-500">Ataque DGA</button>
+                <button onclick="setEntropySample('a8F3kL9zQ2mN7vB4xC1wP0rT6yU5jH8gD2s.c2-tunnel.xyz')" class="px-2 py-1 rounded text-xs bg-[var(--card)] border border-[var(--border)] hover:border-red-500">DNS Tunneling</button>
+              </div>
+              <div class="pt-1">
+                <div class="flex justify-between text-xs font-mono mb-1">
+                  <span>Entropia: <strong id="calc-value" class="text-sm text-emerald-400">3.7345</strong> bits/byte</span>
+                  <span>Tamanho: <span id="calc-len">32</span> bytes</span>
+                </div>
+                <div class="w-full h-3 bg-[var(--card)] rounded-full overflow-hidden border border-[var(--border)]">
+                  <div id="calc-bar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 46%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 1 • Superfície de Caça",
+        time: "Minuto 16–18",
+        title: "Onde a Entropia Brilha no Threat Hunting?",
+        subtitle: "Três lugares onde o atacante tenta se esconder e acaba acendendo um sinalizador neon",
+        notes: "Mostre para a turma que normalmente os analistas só usam entropia para ver se um .exe está packed. O grande diferencial da nossa aula é aplicar a mesma matemática em NOMES DE ARQUIVOS e em LOGS DE DNS.",
+        html: `
+          <div class="grid md:grid-cols-3 gap-4 my-3">
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+              <div class="text-xs font-mono text-emerald-400">Vetor #01 • Disco & FIM</div>
+              <h3 class="text-base font-bold">Binários & Scripts</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Executáveis PE em <code class="font-mono">C:\\Users\\Public</code> ou <code class="font-mono">/tmp</code> com entropia <strong>&gt; 7.20</strong> (Packers/Crypters) ou scripts <code class="font-mono">.ps1/.sh</code> com entropia <strong>&gt; 5.30</strong> (Base64/Invoke-Obfuscation).
+              </p>
+            </div>
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+              <div class="text-xs font-mono text-sky-400">Vetor #02 • Nomes de Artefatos</div>
+              <h3 class="text-base font-bold">Nomes de Arquivos Aleatórios</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Droppers e frameworks C2 salvam payloads temporários gerados por PRNG: <code class="font-mono">/tmp/k9x2m8p4q1z7v6b3.exe</code>. A própria string do path tem entropia <strong>&gt; 4.25</strong>!
+              </p>
+            </div>
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+              <div class="text-xs font-mono text-amber-400">Vetor #03 • Rede & Logs DNS</div>
+              <h3 class="text-base font-bold">Domínios DGA & Tunneling</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Subdomínios usados para exfiltração DNS (<code class="font-mono">aGVsbG8gd29ybGQK.evil.com</code>) ou DGA estouram a entropia de string para <strong>&gt; 4.30</strong>.
+              </p>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 2 • YARA Math",
+        time: "Minuto 18–22",
+        title: "Apresentando o Módulo math do YARA",
+        subtitle: "Transformando o YARA de um 'Ctrl+F gourmet' em um motor estatístico em C",
+        notes: "Explique cada uma das funções principais do módulo math do YARA. Destaque que math.entropy(offset, length) permite medir tanto o arquivo inteiro (0, filesize) quanto um pedaço específico do arquivo (como o finalzinho do binário onde os atacantes escondem overlays)!",
+        html: `
+          <div class="grid md:grid-cols-2 gap-6 items-center">
+            <div class="space-y-3">
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Basta declarar <code class="font-mono text-emerald-400">import "math"</code> no topo da sua regra YARA para habilitar funções estatísticas nativas ultrarrápidas:
+              </p>
+              <div class="space-y-2 text-xs">
+                <div class="p-3 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                  <code class="font-mono font-bold text-emerald-400">math.entropy(offset, length)</code>
+                  <p class="text-[var(--muted-foreground)] mt-1">Retorna um float de <code class="font-mono">0.0</code> a <code class="font-mono">8.0</code> medindo a entropia de Shannon do intervalo de bytes especificado.</p>
+                </div>
+                <div class="p-3 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                  <code class="font-mono font-bold text-sky-400">math.deviation(offset, length, mean)</code>
+                  <p class="text-[var(--muted-foreground)] mt-1">Mede o desvio médio em relação a um valor (em dados criptografados uniformes, a média é <code class="font-mono">127.5</code> e o desvio fica próximo de <code class="font-mono">64.0</code>).</p>
+                </div>
+                <div class="p-3 rounded-lg bg-[var(--background)] border border-[var(--border)]">
+                  <code class="font-mono font-bold text-amber-400">math.mean(offset, length)</code>
+                  <p class="text-[var(--muted-foreground)] mt-1">Média aritmética dos bytes no intervalo (0 a 255). Ótimo para diferenciar ASCII puro de binário cifrado.</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+<pre class="leading-relaxed text-[var(--foreground)]"><span class="text-emerald-400">import "math"</span>
+
+rule Exemplo_Basico_Math {
+    condition:
+        <span class="text-[var(--muted-foreground)]">// 1. Entropia do arquivo inteiro:</span>
+        math.entropy(0, filesize) &gt;= 7.20
+        
+        <span class="text-[var(--muted-foreground)]">// 2. Ou apenas dos últimos 2KB (Overlay Cifrado!):</span>
+        or math.entropy(filesize - 2048, 2048) &gt;= 7.60
+}</pre>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 2 • Regra YARA #1 e #2",
+        time: "Minuto 22–26",
+        title: "Caçando Binários Packed & Scripts Ofuscados",
+        subtitle: "Pegando o Dropper compilado e o Loader em PowerShell Base64 sem precisar de nenhuma assinatura",
+        notes: "Mostre a diferença de limiar (threshold): um binário nativo tem entropia ~6.0, então usamos >= 7.20 para pegar packers/crypters. Já um script texto (.ps1/.sh) tem entropia ~4.3, então >= 5.30 já indica ofuscação pesada ou Base64!",
+        html: `
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+              <div class="flex justify-between items-center mb-2 pb-1.5 border-b border-[var(--border)]">
+                <span class="text-emerald-400 font-bold">Regra #1: Binário PE Packed/Cifrado</span>
+                <span class="text-[var(--muted-foreground)]">Threshold: &gt;= 7.20</span>
+              </div>
+<pre class="leading-relaxed">rule SUSP_Packed_Or_Encrypted_PE_Entropy {
+  condition:
+    uint16(0) == 0x5A4D and
+    filesize &gt; 4KB and filesize &lt; 20MB and
+    (
+      math.entropy(0, filesize) &gt;= 7.20 or
+      (filesize &gt; 8KB and
+       math.entropy(filesize - 2048, 2048) &gt;= 7.60)
+    )
+}</pre>
+            </div>
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+              <div class="flex justify-between items-center mb-2 pb-1.5 border-b border-[var(--border)]">
+                <span class="text-amber-400 font-bold">Regra #2: Script PS1/Bash Ofuscado</span>
+                <span class="text-[var(--muted-foreground)]">Threshold: &gt;= 5.30</span>
+              </div>
+<pre class="leading-relaxed">rule SUSP_Obfuscated_Script_High_Entropy {
+  strings:
+    $s_ps1 = /powershell|pwsh|-enc|IEX/i
+    $b64   = /[A-Za-z0-9+\/]{120,}={0,2}/
+  condition:
+    uint16(0) != 0x5A4D and
+    filesize &gt; 512 and filesize &lt; 2MB and
+    ($s_ps1 or #b64 &gt;= 1) and
+    math.entropy(0, filesize) &gt;= 5.30
+}</pre>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 2 • O Pulo do Gato da Aula",
+        time: "Minuto 26–30",
+        title: "Dilacerando Logs de DNS com @offset e !length",
+        subtitle: "Como fazer o YARA calcular a entropia individual de cada domínio dentro de um arquivo de log!",
+        notes: "ATENÇÃO: Este é o momento 'Mind Blown' da aula! Explique com calma que se medirmos a entropia do arquivo de log inteiro, o timestamp e os IPs diluem a entropia. Mas usando @dns_label[i] (onde começa o domínio) e !dns_label[i] (tamanho do domínio), o YARA recorta cirurgicamente cada domínio do log e mede a entropia só dele!",
+        html: `
+          <div class="space-y-4">
+            <div class="grid md:grid-cols-3 gap-3 text-xs">
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-emerald-500/30">
+                <code class="font-mono font-bold text-emerald-400">#dns_label</code>
+                <p class="text-[var(--muted-foreground)] mt-1">Quantidade total de domínios que bateram na regex dentro do arquivo de log.</p>
+              </div>
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-sky-500/30">
+                <code class="font-mono font-bold text-sky-400">@dns_label[i]</code>
+                <p class="text-[var(--muted-foreground)] mt-1"><strong>Offset exato</strong> (posição do byte inicial) onde o domínio <code class="font-mono">i</code> começa no log.</p>
+              </div>
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-amber-500/30">
+                <code class="font-mono font-bold text-amber-400">!dns_label[i]</code>
+                <p class="text-[var(--muted-foreground)] mt-1"><strong>Comprimento exato</strong> (length em bytes) do domínio <code class="font-mono">i</code> capturado.</p>
+              </div>
+            </div>
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+<pre class="leading-relaxed">rule SUSP_DGA_Or_DNS_Tunneling_In_Logs {
+    strings:
+        <span class="text-[var(--muted-foreground)]">// Captura subdomínios longos (20+ chars no rótulo principal) dentro de qualquer log</span>
+        $dns_label = /[a-zA-Z0-9]{20,63}\.[a-zA-Z0-9.-]{2,40}\.[a-zA-Z]{2,10}/
+        $wl_cdn1 = "cloudfront.net" nocase
+        $wl_cdn2 = "amazonaws.com" nocase
+    condition:
+        filesize &lt; 10MB and not any of ($wl_*) and
+        <span class="text-emerald-400 font-bold">for any i in (1..#dns_label) : (
+            !dns_label[i] &gt;= 26 and
+            math.entropy(@dns_label[i], !dns_label[i]) &gt;= 4.30
+        )</span>
+}</pre>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 2 • Regra YARA #4 e #5",
+        time: "Minuto 30–33",
+        title: "Caçando Nomes de Arquivos Aleatórios & Artefatos de Ransomware",
+        subtitle: "Pegando tanto o nome randômico no log quanto o arquivo criptografado no disco",
+        notes: "Mostre que usamos a mesma técnica de @susp_path[i] e !susp_path[i] para pegar droppers que criam arquivos como /tmp/k9x2m8p4q1z7v6b3n0w5r2t8y1.exe. E ao lado, a regra que detecta arquivos recém-cifrados por ransomware.",
+        html: `
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+              <div class="text-sky-400 font-bold mb-2 pb-1 border-b border-[var(--border)]">Regra #4: Path de Arquivo Aleatório no Log</div>
+<pre class="leading-relaxed">rule SUSP_Random_Filename_In_Logs {
+  strings:
+    $susp_path = /(\/tmp\/|\/dev\/shm\/|\\Users\\Public\\)[a-zA-Z0-9_]{16,45}\.(exe|dll|bin|sh|ps1)/i
+  condition:
+    filesize &lt; 10MB and
+    for any i in (1..#susp_path) : (
+      math.entropy(@susp_path[i], !susp_path[i]) &gt;= 4.25
+    )
+}</pre>
+            </div>
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+              <div class="text-red-400 font-bold mb-2 pb-1 border-b border-[var(--border)]">Regra #5: Drop Cifrado / Ransomware</div>
+<pre class="leading-relaxed">rule SUSP_Encrypted_Drop_Or_Ransomware_Artifact {
+  condition:
+    filesize &gt; 2KB and filesize &lt; 50MB and
+    uint32(0) != 0x04034B50 and <span class="text-[var(--muted-foreground)]">// Exclui ZIP/DOCX</span>
+    uint16(0) != 0x8B1F     and <span class="text-[var(--muted-foreground)]">// Exclui GZIP</span>
+    uint32(0) != 0x474E5089 and <span class="text-[var(--muted-foreground)]">// Exclui PNG</span>
+    uint32(0) != 0x46445025 and <span class="text-[var(--muted-foreground)]">// Exclui PDF</span>
+    math.entropy(0, filesize) &gt;= 7.50 and
+    math.deviation(0, filesize, 127.5) &gt;= 60.0
+}</pre>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 3 • Arquitetura & Mapa Mental",
+        time: "Minuto 33–37",
+        title: "Mapa Mental do Fluxo: Wazuh + FIM + YARA Math",
+        subtitle: "Do momento em que o artefato toca o disco até o alerta crítico com Entropia no SOC em ~1.5 segundos",
+        notes: "Percorra o mapa mental em 5 fases com a turma: 1) Endpoint: o arquivo é gravado em /tmp e o inotify do Linux avisa o Syscheck em realtime. 2) Wazuh Manager: o Syscheck ativa a Rule 554/550, e o ossec.conf dispara a ordem de Active Response via JSON para a porta 1514. 3) Endpoint: o agente roda o script yara_entropy_scan.sh (YARA Math + Python Shannon) e grava a linha no active-responses.log. 4) Manager: o Logcollector envia de volta, o local_decoder.xml extrai a entropia e as local_rules.xml (100300-100303) mapeiam no MITRE ATT&CK. 5) Indexer & SOC: o alerta é indexado no OpenSearch (9200) e exibido em vermelho no Dashboard (443) para ação imediata.",
+        html: `
+          <div class="space-y-3.5 my-1">
+            <!-- Timeline Tracker Header -->
+            <div class="flex flex-wrap items-center justify-between gap-1 px-3 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--border)] font-mono text-[11px] text-[var(--muted-foreground)]">
+              <span class="text-sky-400 font-bold">⏱️ T=0.0s • Drop</span>
+              <span>➔</span>
+              <span class="text-amber-400 font-bold">T=0.3s • Manager AR</span>
+              <span>➔</span>
+              <span class="text-purple-400 font-bold">T=0.6s • YARA Scan</span>
+              <span>➔</span>
+              <span class="text-emerald-400 font-bold">T=1.0s • Decoder</span>
+              <span>➔</span>
+              <span class="text-red-400 font-bold">T=1.5s • Alerta SOC</span>
+            </div>
+
+            <!-- Mind Map Connected Grid (5 Stages) -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-2.5 text-xs">
+              
+              <!-- Fase 1: Endpoint Drop & FIM -->
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-sky-500/40 flex flex-col justify-between space-y-2 relative shadow-sm">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/20 text-sky-400">FASE 1</span>
+                    <span class="text-[10px] text-[var(--muted-foreground)]">Endpoint</span>
+                  </div>
+                  <h4 class="font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
+                    <span>📁</span> Evento &amp; FIM
+                  </h4>
+                  <p class="text-[11px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed">
+                    Atacante grava <code class="font-mono text-sky-300">/tmp/malware.exe</code>.
+                  </p>
+                  <div class="mt-2 p-1.5 rounded bg-[var(--card)] border border-[var(--border)] font-mono text-[10px] text-sky-300 space-y-0.5">
+                    <div>• Kernel <code class="text-emerald-400">inotify</code></div>
+                    <div>• <code class="text-amber-300">realtime="yes"</code></div>
+                  </div>
+                </div>
+                <div class="pt-1.5 border-t border-[var(--border)] text-[10px] text-sky-400/90 font-mono flex items-center justify-between">
+                  <span>Envia FIM</span>
+                  <span>Porta 1514 ➔</span>
+                </div>
+              </div>
+
+              <!-- Fase 2: Manager Orquestracao -->
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-amber-500/40 flex flex-col justify-between space-y-2 relative shadow-sm">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400">FASE 2</span>
+                    <span class="text-[10px] text-[var(--muted-foreground)]">Manager</span>
+                  </div>
+                  <h4 class="font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
+                    <span>⚡</span> Active Response
+                  </h4>
+                  <p class="text-[11px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed">
+                    Manager recebe o FIM e avalia as regras nativas.
+                  </p>
+                  <div class="mt-2 p-1.5 rounded bg-[var(--card)] border border-[var(--border)] font-mono text-[10px] text-amber-300 space-y-0.5">
+                    <div>• Rule 554: File Added</div>
+                    <div>• Dispara <code class="text-sky-300">&lt;command&gt;</code></div>
+                  </div>
+                </div>
+                <div class="pt-1.5 border-t border-[var(--border)] text-[10px] text-amber-400/90 font-mono flex items-center justify-between">
+                  <span>JSON via stdin</span>
+                  <span>➔ Execução</span>
+                </div>
+              </div>
+
+              <!-- Fase 3: Endpoint YARA Math -->
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-purple-500/40 flex flex-col justify-between space-y-2 relative shadow-sm">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-400">FASE 3</span>
+                    <span class="text-[10px] text-[var(--muted-foreground)]">Endpoint</span>
+                  </div>
+                  <h4 class="font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
+                    <span>🔬</span> YARA Math Scan
+                  </h4>
+                  <p class="text-[11px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed">
+                    Script roda YARA + cálculo exato de Shannon.
+                  </p>
+                  <div class="mt-2 p-1.5 rounded bg-[var(--card)] border border-[var(--border)] font-mono text-[10px] text-purple-300 space-y-0.5">
+                    <div>• <code class="text-emerald-400">yara_entropy_scan.sh</code></div>
+                    <div>• Entropia &gt;= 7.20 / 5.30</div>
+                  </div>
+                </div>
+                <div class="pt-1.5 border-t border-[var(--border)] text-[10px] text-purple-400/90 font-mono flex items-center justify-between">
+                  <span>Grava log local</span>
+                  <span>Logcollector ➔</span>
+                </div>
+              </div>
+
+              <!-- Fase 4: Manager Decoder & Regras -->
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-emerald-500/40 flex flex-col justify-between space-y-2 relative shadow-sm">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400">FASE 4</span>
+                    <span class="text-[10px] text-[var(--muted-foreground)]">Manager</span>
+                  </div>
+                  <h4 class="font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
+                    <span>🧠</span> Decoders &amp; Regras
+                  </h4>
+                  <p class="text-[11px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed">
+                    Decodifica campos e ativa regras com MITRE ATT&amp;CK.
+                  </p>
+                  <div class="mt-2 p-1.5 rounded bg-[var(--card)] border border-[var(--border)] font-mono text-[10px] text-emerald-300 space-y-0.5">
+                    <div>• <code class="text-sky-300">local_decoder.xml</code></div>
+                    <div>• Rules 100300 - 100303</div>
+                  </div>
+                </div>
+                <div class="pt-1.5 border-t border-[var(--border)] text-[10px] text-emerald-400/90 font-mono flex items-center justify-between">
+                  <span>Indexação</span>
+                  <span>Porta 9200 ➔</span>
+                </div>
+              </div>
+
+              <!-- Fase 5: Indexer & SOC Dashboard -->
+              <div class="p-3 rounded-xl bg-[var(--background)] border border-red-500/50 flex flex-col justify-between space-y-2 relative shadow-sm">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-red-500/20 text-red-400">FASE 5</span>
+                    <span class="text-[10px] text-[var(--muted-foreground)]">Dashboard</span>
+                  </div>
+                  <h4 class="font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
+                    <span>🚨</span> Alerta SOC &amp; Ação
+                  </h4>
+                  <p class="text-[11px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed">
+                    Alerta Crítico Lvl 12–14 aparece no painel web.
+                  </p>
+                  <div class="mt-2 p-1.5 rounded bg-[var(--card)] border border-[var(--border)] font-mono text-[10px] text-red-300 space-y-0.5">
+                    <div>• <code class="text-amber-300">T1027 / T1568.002</code></div>
+                    <div>• Opção: Kill / Quarentena</div>
+                  </div>
+                </div>
+                <div class="pt-1.5 border-t border-[var(--border)] text-[10px] text-red-400/90 font-mono flex items-center justify-between">
+                  <span>Wazuh Dashboard</span>
+                  <span>Porta 443 ✅</span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Bottom Callout Footer -->
+            <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs flex flex-wrap items-center justify-between gap-2">
+              <span class="flex items-center gap-2">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <strong>Resposta Automatizada:</strong> O arquivo é detectado, auditado matematicamente e bloqueado antes de iniciar a execução danosa.
+              </span>
+              <span class="font-mono text-emerald-400 font-bold">Latência: ~1.5s • Custo: R$ 0,00</span>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 3 • Integração Wazuh",
+        time: "Minuto 37–41",
+        title: "Por Dentro da Configuração do Wazuh",
+        subtitle: "O Script Active Response, o Decoder e as Regras Customizadas",
+        notes: "Mostre como o script yara_entropy_scan.sh grava uma linha padronizada em /var/ossec/logs/active-responses.log contendo o nome da regra YARA e o valor exato da entropia calculada, e como as Rules 100301-100303 transformam isso em alerta.",
+        html: `
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+              <div class="text-emerald-400 font-bold mb-2">1. Log Gerado pelo Active Response</div>
+<pre class="leading-relaxed text-[var(--muted-foreground)]">wazuh-yara-entropy: INFO -
+  scan_result: <span class="text-emerald-400">matched</span> |
+  yara_rule: <span class="text-amber-400">SUSP_Packed_Or_Encrypted_PE_Entropy</span> |
+  file_entropy: <span class="text-red-400">7.9812</span> |
+  target_file: <span class="text-sky-400">/tmp/aula_entropia/2_svchost_packed.exe</span></pre>
+              <div class="text-sky-400 font-bold mt-4 mb-2">2. Trecho do ossec.conf (Manager)</div>
+<pre class="leading-relaxed">&lt;active-response&gt;
+  &lt;command&gt;yara-entropy-scan&lt;/command&gt;
+  &lt;location&gt;local&lt;/location&gt;
+  &lt;rules_id&gt;550,554&lt;/rules_id&gt;
+&lt;/active-response&gt;</pre>
+            </div>
+            <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+              <div class="text-amber-400 font-bold mb-2">3. Regras no Wazuh (local_rules.xml)</div>
+<pre class="leading-relaxed">&lt;rule id="100301" level="12"&gt;
+  &lt;if_sid&gt;100300&lt;/if_sid&gt;
+  &lt;field name="scan_result"&gt;matched&lt;/field&gt;
+  &lt;description&gt;YARA Math: [$(yara_rule)] em $(target_file) (Entropia: $(file_entropy))&lt;/description&gt;
+  &lt;mitre&gt;&lt;id&gt;T1027&lt;/id&gt;&lt;/mitre&gt;
+&lt;/rule&gt;
+
+&lt;rule id="100303" level="13"&gt;
+  &lt;if_sid&gt;100301&lt;/if_sid&gt;
+  &lt;field name="yara_rule"&gt;SUSP_DGA_Or_DNS_Tunneling_In_Logs&lt;/field&gt;
+  &lt;description&gt;ALERTA DNS ENTROPY - DGA ou Tunneling detectado em $(target_file)&lt;/description&gt;
+  &lt;mitre&gt;&lt;id&gt;T1568.002&lt;/id&gt;&lt;/mitre&gt;
+&lt;/rule&gt;</pre>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 3 • Vida Real no SOC",
+        time: "Minuto 41–45",
+        title: "Tuning de Falsos Positivos: O Segredo dos Profissionais",
+        subtitle: "Por que você NÃO deve apenas alertar 'entropia > 7.0' sem olhar os Magic Bytes!",
+        notes: "Pergunte para a turma: 'Se eu criar uma regra alertando qualquer arquivo no computador com entropia maior que 7.2, o que vai acontecer?' Resposta: A foto do gatinho em .png e a planilha .xlsx do financeiro vão disparar alerta de Ransomware! Mostre na tabela como filtramos os Magic Bytes no YARA.",
+        html: `
+          <div class="space-y-3">
+            <p class="text-xs text-[var(--muted-foreground)]">
+              Compressão legítima (ZIP, GZIP, PNG, PDF) também maximiza a entropia. Veja como nossa regra YARA elimina falsos positivos checando os <strong>Magic Bytes</strong> no offset 0:
+            </p>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs border-collapse bg-[var(--background)] rounded-xl overflow-hidden border border-[var(--border)]">
+                <thead>
+                  <tr class="border-b border-[var(--border)] text-[var(--muted-foreground)] bg-[var(--card)]">
+                    <th class="text-left p-3">Artefato Legítimo</th>
+                    <th class="text-left p-3">Por que tem Entropia Alta?</th>
+                    <th class="text-left p-3">Filtro Cirúrgico no YARA</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border)]">
+                  <tr>
+                    <td class="p-3 font-semibold">.zip, .docx, .xlsx, .jar</td>
+                    <td class="p-3 text-[var(--muted-foreground)]">Compressão Deflate (7.5 – 7.9)</td>
+                    <td class="p-3 font-mono text-emerald-400">uint32(0) != 0x04034B50</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-semibold">.gz, .tgz (Backups Linux)</td>
+                    <td class="p-3 text-[var(--muted-foreground)]">Compressão GZIP (7.8 – 7.99)</td>
+                    <td class="p-3 font-mono text-emerald-400">uint16(0) != 0x8B1F</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-semibold">Imagens (.png, .jpg) e .pdf</td>
+                    <td class="p-3 text-[var(--muted-foreground)]">Streams de mídia comprimidos</td>
+                    <td class="p-3 font-mono text-emerald-400">uint32(0) != 0x474E5089 / 0x46445025</td>
+                  </tr>
+                  <tr>
+                    <td class="p-3 font-semibold">CDNs (Cloudfront, Akamai)</td>
+                    <td class="p-3 text-[var(--muted-foreground)]">Hashes em subdomínios de cache</td>
+                    <td class="p-3 font-mono text-emerald-400">not any of ($whitelist_cdn*)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 4 • Showtime / Live Demo",
+        time: "Minuto 45–53",
+        title: "Roteiro da Simulação Ao Vivo na Aula",
+        subtitle: "Executando o simulador (Bash no Linux ou PowerShell no Windows) em 5 atos",
+        notes: "Abra o terminal e execute ./simulador_aula_entropia.sh (ou o .ps1 no Windows)! Percorra os 5 atos pausando no [ENTER] para mostrar a entropia de Shannon de cada artefato e como as 5 regras YARA reagem com precisão cirúrgica sem gerar falsos positivos.",
+        html: `
+          <div class="grid md:grid-cols-3 gap-2.5 my-1 text-xs">
+            <div class="p-3 rounded-xl bg-[var(--background)] border border-emerald-500/30 space-y-1">
+              <div class="font-mono font-bold text-emerald-400">ATO 1 • Baseline Limpo</div>
+              <p class="text-[11px] text-[var(--muted-foreground)]">Script de backup e log corporativo normal (~4.3 bits/byte).</p>
+              <div class="font-mono text-emerald-400 text-[10px] pt-1">Zero Alertas (0 FP).</div>
+            </div>
+            <div class="p-3 rounded-xl bg-[var(--background)] border border-red-500/30 space-y-1">
+              <div class="font-mono font-bold text-red-400">ATO 2 • Dropper PE Packed</div>
+              <p class="text-[11px] text-[var(--muted-foreground)]">Header MZ + 32KB criptografados (~7.99 bits/byte).</p>
+              <div class="font-mono text-red-400 text-[10px] pt-1">SUSP_Packed_PE (T1027.002)</div>
+            </div>
+            <div class="p-3 rounded-xl bg-[var(--background)] border border-amber-500/30 space-y-1">
+              <div class="font-mono font-bold text-amber-400">ATO 3 • Script Ofuscado</div>
+              <p class="text-[11px] text-[var(--muted-foreground)]">PowerShell Base64 randômico (-EncodedCommand, ~6.0 bits).</p>
+              <div class="font-mono text-amber-400 text-[10px] pt-1">SUSP_Obfuscated_Script (T1027.010)</div>
+            </div>
+            <div class="p-3 rounded-xl bg-[var(--background)] border border-purple-500/30 space-y-1">
+              <div class="font-mono font-bold text-purple-400">ATO 4 • Drop de Ransomware</div>
+              <p class="text-[11px] text-[var(--muted-foreground)]">Arquivo .locked puro com alta entropia (~7.99) sem cabeçalho PE/ZIP.</p>
+              <div class="font-mono text-purple-400 text-[10px] pt-1">SUSP_Encrypted_Drop (T1486)</div>
+            </div>
+            <div class="p-3 rounded-xl bg-[var(--background)] border border-sky-500/30 space-y-1 md:col-span-2">
+              <div class="font-mono font-bold text-sky-400">ATO 5 • Dilacerando Logs de DNS (DGA + Tunneling + Dropper)</div>
+              <p class="text-[11px] text-[var(--muted-foreground)]">Injeta subdomínios DGA, túnel DNS TXT e dropper temporário no log. O YARA extrai e mede isoladamente cada trecho com @offset e !length.</p>
+              <div class="font-mono text-sky-400 text-[10px] pt-1">SUSP_DGA_Or_DNS_Tunneling (T1568.002) + SUSP_Random_Filename (T1036)</div>
+            </div>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 4 • Visão do SOC",
+        time: "Minuto 53–57",
+        title: "O Que Aparece no Dashboard do Wazuh",
+        subtitle: "Alerta enriquecido com Regra YARA, Entropia Calculada e MITRE ATT&CK",
+        notes: "Mostre para os alunos o JSON final que chega no Wazuh Dashboard. Destaque como o analista N1 já recebe o valor da entropia (file_entropy) e o ID do MITRE ATT&CK mastigados para tomar ação imediata.",
+        html: `
+          <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-4 font-mono text-xs overflow-x-auto">
+<pre class="leading-relaxed">{
+  "timestamp": "2026-10-23T17:45:12.402-0300",
+  "rule": {
+    "level": <span class="text-red-400 font-bold">13</span>,
+    "description": <span class="text-emerald-400">"ALERTA DNS ENTROPY - Dominio DGA ou DNS Tunneling detectado via YARA Math no arquivo /tmp/aula_entropia/4_dns_dga_tunneling_attack.log"</span>,
+    "id": "100303",
+    "mitre": {
+      "id": [<span class="text-amber-400">"T1568.002"</span>, <span class="text-amber-400">"T1071.004"</span>],
+      "tactic": ["Command and Control"]
+    }
+  },
+  "data": {
+    "scan_result": "matched",
+    "yara_rule": <span class="text-sky-400">"SUSP_DGA_Or_DNS_Tunneling_In_Logs"</span>,
+    "file_entropy": <span class="text-amber-400">"4.7912"</span>,
+    "target_file": "/tmp/aula_entropia/4_dns_dga_tunneling_attack.log"
+  }
+}</pre>
+          </div>
+        `
+      },
+      {
+        badge: "Bloco 4 • Fechamento",
+        time: "Minuto 57–60",
+        title: "Conclusão & Takeaways da Aula",
+        subtitle: "O que levar para o seu SOC amanhã de manhã (e para a próxima reunião com vendors)",
+        notes: "Finalize reforçando que detecção de alto nível não depende de orçamento milionário, e sim de entender os fundamentos da computação e da matemática aplicados à segurança.",
+        html: `
+          <div class="grid md:grid-cols-3 gap-4 my-3">
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-emerald-500/30 space-y-2">
+              <div class="text-xs font-mono text-emerald-400 font-bold">Lição #01</div>
+              <h3 class="text-base font-bold">Matemática &gt; IOCs</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                O atacante pode trocar o hash e o domínio a cada 5 segundos, mas qualquer tentativa de cifrar, comprimir ou gerar nomes aleatórios esbarra na Entropia de Shannon.
+              </p>
+            </div>
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-sky-500/30 space-y-2">
+              <div class="text-xs font-mono text-sky-400 font-bold">Lição #02</div>
+              <h3 class="text-base font-bold">YARA Dilacera Logs</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Combinar Regex + <code class="font-mono">math.entropy(@str[i], !str[i])</code> transforma o YARA num caçador cirúrgico de DGA, DNS Tunneling e droppers dentro de arquivos de log.
+              </p>
+            </div>
+            <div class="p-5 rounded-xl bg-[var(--background)] border border-amber-500/30 space-y-2">
+              <div class="text-xs font-mono text-amber-400 font-bold">Lição #03</div>
+              <h3 class="text-base font-bold">Menos Hype, Mais Engenharia</h3>
+              <p class="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                Da próxima vez que te cobrarem 1 milhão de dólares por "Detecção Quântica de Anomalias", pergunte se é só o <code class="font-mono">log₂(p)</code> do Claude Shannon de terno e gravata!
+              </p>
+            </div>
+          </div>
+        `
+      }
+    ];
+
+    let currentSlide = 0;
+    let showNotes = true;
+
+    function calculateShannon(str) {
+      if (!str || str.length === 0) return 0;
+      const freq = {};
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        freq[ch] = (freq[ch] || 0) + 1;
+      }
+      const len = str.length;
+      let entropy = 0;
+      for (const k in freq) {
+        const p = freq[k] / len;
+        entropy -= p * Math.log2(p);
+      }
+      return entropy;
+    }
+
+    function updateLiveEntropy() {
+      const input = document.getElementById('entropy-input');
+      if (!input) return;
+      const val = input.value;
+      const ent = calculateShannon(val);
+      const valEl = document.getElementById('calc-value');
+      const lenEl = document.getElementById('calc-len');
+      const barEl = document.getElementById('calc-bar');
+      const badgeEl = document.getElementById('calc-badge');
+
+      valEl.textContent = ent.toFixed(4);
+      lenEl.textContent = val.length;
+      const pct = Math.min(100, Math.max(2, (ent / 8.0) * 100));
+      barEl.style.width = pct + '%';
+
+      if (ent >= 4.30 && val.length >= 24) {
+        badgeEl.textContent = 'ALERTA YARA (>= 4.30)';
+        badgeEl.className = 'text-xs font-mono px-2 py-0.5 rounded bg-red-500/20 text-red-300';
+        barEl.className = 'h-full bg-red-500 transition-all duration-200';
+        valEl.className = 'text-sm text-red-400 font-bold';
+      } else if (ent >= 4.00) {
+        badgeEl.textContent = 'Suspeito (Moderada)';
+        badgeEl.className = 'text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300';
+        barEl.className = 'h-full bg-amber-500 transition-all duration-200';
+        valEl.className = 'text-sm text-amber-400 font-bold';
+      } else {
+        badgeEl.textContent = 'Normal (< 4.30)';
+        badgeEl.className = 'text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300';
+        barEl.className = 'h-full bg-emerald-500 transition-all duration-200';
+        valEl.className = 'text-sm text-emerald-400 font-bold';
+      }
+    }
+
+    function setEntropySample(sample) {
+      const input = document.getElementById('entropy-input');
+      if (input) {
+        input.value = sample;
+        updateLiveEntropy();
+      }
+    }
+
+    function renderSlide() {
+      const s = slides[currentSlide];
+      const stage = document.getElementById('slide-stage');
+      stage.innerHTML = `
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <span class="text-xs font-mono font-semibold uppercase tracking-wider text-emerald-400">${s.badge}</span>
+            <span class="text-xs font-mono text-[var(--muted-foreground)]">Slide ${currentSlide + 1} de ${slides.length}</span>
+          </div>
+          <h2 class="text-xl md:text-2xl font-bold text-[var(--foreground)]">${s.title}</h2>
+          <p class="text-sm text-[var(--muted-foreground)] mt-1 mb-5">${s.subtitle}</p>
+          <div>${s.html}</div>
+        </div>
+        <div class="pt-6 mt-6 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+          <span>Use as setas do teclado <kbd class="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono">←</kbd> <kbd class="px-1.5 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] font-mono">→</kbd> para navegar</span>
+          <span class="font-mono">${s.time}</span>
+        </div>
+      `;
+
+      document.getElementById('slide-counter').textContent =
+        String(currentSlide + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+      document.getElementById('progress-bar').style.width = ((currentSlide + 1) / slides.length * 100).toFixed(2) + '%';
+      document.getElementById('notes-content').textContent = s.notes;
+      document.getElementById('slide-timer-badge').textContent = s.time;
+
+      renderDots();
+      if (currentSlide === 4) {
+        updateLiveEntropy();
+      }
+    }
+
+    function renderDots() {
+      const container = document.getElementById('slide-dots');
+      container.innerHTML = slides.map((s, idx) => `
+        <button onclick="goToSlide(${idx})" title="Slide ${idx + 1}: ${s.title}"
+          class="px-2 py-1 rounded text-xs font-mono transition ${idx === currentSlide ? 'bg-emerald-500 text-black font-bold' : 'bg-[var(--card)] text-[var(--muted-foreground)] border border-[var(--border)] hover:opacity-80'}">
+          ${idx + 1}
+        </button>
+      `).join('');
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        renderSlide();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        currentSlide++;
+        renderSlide();
+      }
+    }
+
+    function goToSlide(idx) {
+      currentSlide = idx;
+      renderSlide();
+    }
+
+    function toggleNotes() {
+      showNotes = !showNotes;
+      const notesEl = document.getElementById('speaker-notes');
+      const btnEl = document.getElementById('btn-notes');
+      notesEl.style.display = showNotes ? 'block' : 'none';
+      btnEl.textContent = 'Notas do Instrutor: ' + (showNotes ? 'ON' : 'OFF');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    renderSlide();
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Artefatos temporarios de laboratorio e simulacao
+/tmp/aula_entropia/
+*.locked
+*.enc
+*.tmp
+*.log
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores e IDEs
+.vscode/
+.idea/
+*.swp
+*~

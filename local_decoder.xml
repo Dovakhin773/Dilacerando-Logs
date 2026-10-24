@@ -1,0 +1,15 @@
+<!-- ====================================================================== -->
+<!-- Decoder para o Active Response de YARA + Entropia                      -->
+<!-- Destino: /var/ossec/etc/decoders/local_decoder.xml (Wazuh Manager)     -->
+<!-- ====================================================================== -->
+
+<decoder name="wazuh-yara-entropy">
+  <prematch>wazuh-yara-entropy</prematch>
+</decoder>
+
+<decoder name="wazuh-yara-entropy-fields">
+  <parent>wazuh-yara-entropy</parent>
+  <!-- Suporta caminhos de arquivos com espacos tanto no Windows quanto no Linux -->
+  <regex>scan_result: (\S+) \| yara_rule: (\S+) \| file_entropy: (\S+) \| target_file: (.+) \| meta: (.*)</regex>
+  <order>scan_result, yara_rule, file_entropy, target_file, yara_meta</order>
+</decoder>

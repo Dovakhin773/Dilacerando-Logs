@@ -1,0 +1,76 @@
+<!-- ====================================================================== -->
+<!-- Regras de Deteccao YARA Math + Entropia                                -->
+<!-- Destino: /var/ossec/etc/rules/local_rules.xml (Wazuh Manager)          -->
+<!-- ====================================================================== -->
+
+<group name="yara,entropy_hunting,">
+
+  <!-- 100300: Regra Base - Agrupa qualquer evento processado pelo decoder -->
+  <rule id="100300" level="3">
+    <decoded_as>wazuh-yara-entropy</decoded_as>
+    <description>Wazuh YARA Entropy Scanner executado no endpoint.</description>
+  </rule>
+
+  <!-- 100301: Alerta Geral de Match YARA com Entropia -->
+  <rule id="100301" level="11">
+    <if_sid>100300</if_sid>
+    <field name="scan_result">matched</field>
+    <description>YARA Math: Regra [$(yara_rule)] em $(target_file) (Entropia: $(file_entropy))</description>
+    <mitre>
+      <id>T1027</id>
+    </mitre>
+  </rule>
+
+  <!-- 100302: Executavel PE Empacotado / Criptografado (Alta Entropia) -->
+  <rule id="100302" level="13">
+    <if_sid>100301</if_sid>
+    <field name="yara_rule">^SUSP_Packed_Or_Encrypted_PE_Entropy$</field>
+    <description>CRITICO: Executavel PE empacotado/cifrado (Packer/Crypter) detectado em $(target_file) [Entropia: $(file_entropy)]</description>
+    <mitre>
+      <id>T1027.002</id>
+    </mitre>
+  </rule>
+
+  <!-- 100303: Script Ofuscado / Base64 Massivo -->
+  <rule id="100303" level="12">
+    <if_sid>100301</if_sid>
+    <field name="yara_rule">^SUSP_Obfuscated_Script_High_Entropy$</field>
+    <description>ALERTA: Script PowerShell/Bash ofuscado ou Base64 de alta entropia detectado em $(target_file) [Entropia: $(file_entropy)]</description>
+    <mitre>
+      <id>T1027.010</id>
+      <id>T1059</id>
+    </mitre>
+  </rule>
+
+  <!-- 100304: Ransomware / Drop Criptografado sem Cabecalho Conhecido -->
+  <rule id="100304" level="14">
+    <if_sid>100301</if_sid>
+    <field name="yara_rule">^SUSP_Encrypted_Drop_Or_Ransomware_Artifact$</field>
+    <description>EMERGENCIA: Arquivo cifrado por Ransomware detectado em $(target_file) [Entropia: $(file_entropy)]</description>
+    <mitre>
+      <id>T1486</id>
+    </mitre>
+  </rule>
+
+  <!-- 100305: DGA / Exfiltracao DNS Tunneling em Logs -->
+  <rule id="100305" level="13">
+    <if_sid>100301</if_sid>
+    <field name="yara_rule">^SUSP_DGA_Or_DNS_Tunneling_In_Logs$</field>
+    <description>ALERTA DNS: Dominio DGA ou DNS Tunneling com alta entropia detectado no log $(target_file)</description>
+    <mitre>
+      <id>T1568.002</id>
+      <id>T1071.004</id>
+    </mitre>
+  </rule>
+
+  <!-- 100306: Nome de Arquivo Aleatorio (Dropper/Temp) em Logs -->
+  <rule id="100306" level="10">
+    <if_sid>100301</if_sid>
+    <field name="yara_rule">^SUSP_Random_Filename_In_Logs$</field>
+    <description>ALERTA: Caminho/Nome de arquivo gerado aleatoriamente (Dropper) detectado no log $(target_file)</description>
+    <mitre>
+      <id>T1036</id>
+    </mitre>
+  </rule>
+
+</group>

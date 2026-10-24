@@ -1,0 +1,61 @@
+<!-- ====================================================================== -->
+<!-- TRECHO DE CONFIGURACAO: ossec.conf (Wazuh Manager e Agentes)           -->
+<!-- ====================================================================== -->
+
+<!-- 
+  ========================================================================
+  PARTE 1: NO WAZUH MANAGER (/var/ossec/etc/ossec.conf)
+  ========================================================================
+  Cole este bloco dentro da tag principal <ossec_config> no Manager:
+-->
+<ossec_config>
+
+  <!-- 1.1 Definicao do Comando Active Response (Linux) -->
+  <command>
+    <name>yara-entropy-scan</name>
+    <executable>yara_entropy_scan.sh</executable>
+    <timeout_allowed>no</timeout_allowed>
+  </command>
+
+  <!-- 1.2 Definicao do Comando Active Response (Windows - opcional) -->
+  <command>
+    <name>yara-entropy-scan-win</name>
+    <executable>yara_entropy_scan.cmd</executable>
+    <timeout_allowed>no</timeout_allowed>
+  </command>
+
+  <!-- 1.3 Active Response: Dispara no Agente sempre que FIM detectar criacao (554) ou modificacao (550) -->
+  <active-response>
+    <disabled>no</disabled>
+    <command>yara-entropy-scan</command>
+    <location>local</location>
+    <rules_id>550,554</rules_id>
+  </active-response>
+
+</ossec_config>
+
+
+<!-- 
+  ========================================================================
+  PARTE 2: NO WAZUH AGENT / ENDPOINT (/var/ossec/etc/ossec.conf)
+  ========================================================================
+  Cole este bloco no arquivo ossec.conf do Agente (ou no agent.conf centralizado):
+-->
+<ossec_config>
+
+  <!-- 2.1 Monitoramento de Integridade de Arquivos (FIM) em Tempo Real -->
+  <syscheck>
+    <!-- Linux: pasta temporaria da simulacao -->
+    <directories realtime="yes" check_all="yes" report_changes="no">/tmp/aula_entropia</directories>
+    
+    <!-- Windows (se for agente Windows): -->
+    <!-- <directories realtime="yes" check_all="yes" report_changes="no">C:\Users\Public</directories> -->
+  </syscheck>
+
+  <!-- 2.2 Ingestao do Log gerado pelo Active Response para ser enviado ao Manager -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/ossec/logs/active-responses.log</location>
+  </localfile>
+
+</ossec_config>
